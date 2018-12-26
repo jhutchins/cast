@@ -1,8 +1,8 @@
 package didisoft.cast
 
-import android.util.Log
 import android.app.Activity
 import android.content.Context
+import android.util.Log
 import com.google.android.gms.cast.MediaMetadata
 import com.google.android.gms.cast.framework.CastOptions
 import com.google.android.gms.cast.framework.OptionsProvider
@@ -20,7 +20,7 @@ class CastOptionsProvider : OptionsProvider {
     }
 
     override fun getCastOptions(context: Context): CastOptions {
-        Log.d(TAG, "AppId = " + AppId + ", application = " + activity.toString())
+        Log.d(TAG, "AppId = " + AppId + ", activity = " + activity)
         val notificationOptions = NotificationOptions.Builder()
                 .setActions(Arrays.asList(MediaIntentReceiver.ACTION_SKIP_NEXT,
                         MediaIntentReceiver.ACTION_TOGGLE_PLAYBACK,
@@ -37,11 +37,6 @@ class CastOptionsProvider : OptionsProvider {
                 .setResumeSavedSession(false)
                 .setCastMediaOptions(mediaOptions)
                 .build()
-
-        /*return CastOptions.Builder()
-                .setReceiverApplicationId(CastOptionsProvider.AppId)
-                .setEnableReconnectionService(false)
-                .build()*/
     }
 
     override fun getAdditionalSessionProviders(context: Context): List<SessionProvider>? {

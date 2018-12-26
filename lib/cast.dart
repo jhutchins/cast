@@ -66,8 +66,8 @@ class Cast {
     return result;
   }
 
-  Future<String> play(String url, String mimeType, {Map<String, String> metadata: null, int position: 0}) async {
-    var result = await _channel.invokeMethod('play', {'url': url, 'mimeType': mimeType, 'metadata': metadata, 'position': position});
+  Future<String> play(String url, String mimeType, {Map<String, String> extra, int position: 0}) async {
+    var result = await _channel.invokeMethod('play', {'url': url, 'mimeType': mimeType, 'extra': extra, 'position': position});
     return result;
   }
 
