@@ -10,20 +10,27 @@ class Cast {
   factory Cast() => _instance ??= Cast._();
   static const MethodChannel _channel = const MethodChannel('didisoft.cast');
   var connectedController = StreamController<ConnectedEvent>();
-  Stream<ConnectedEvent> get onConnection => connectedController.stream;
   var routeChangedController = StreamController<RouteChangedEvent>();
-  Stream<RouteChangedEvent> get routeChanged => routeChangedController.stream;
   Map<String, RouteProps> _routes;
   var mediaPlayingController = StreamController<MediaPlayingEvent>();
-  Stream<MediaPlayingEvent> get onMediaPlaying => mediaPlayingController.stream;
   var _sessionStatusController = StreamController<SessionStatusEvent>();
-  Stream<SessionStatusEvent> get onSessionStatusChanged => _sessionStatusController.stream;
   var _itemStatusController = StreamController<ItemStatusEvent>();
-  Stream<ItemStatusEvent> get onItemStatusChanged => _itemStatusController.stream;
+  Stream<ConnectedEvent> onConnection;
+  Stream<RouteChangedEvent> routeChanged;
+  Stream<MediaPlayingEvent> onMediaPlaying;
+  Stream<SessionStatusEvent> onSessionStatusChanged;
+  Stream<ItemStatusEvent> onItemStatusChanged;
+  String _sessionId = null;
 
   Cast._() {
     _channel.setMethodCallHandler(_callHandler);
     _routes = Map<String, RouteProps>();
+    onConnection = connectedController.stream.asBroadcastStream();
+    routeChanged = routeChangedController.stream.asBroadcastStream();
+    onMediaPlaying = mediaPlayingController.stream.asBroadcastStream();
+    onSessionStatusChanged =
+        _sessionStatusController.stream.asBroadcastStream();
+    onItemStatusChanged = _itemStatusController.stream.asBroadcastStream();
   }
 
   Future initChromecast(appId) async {
@@ -33,10 +40,19 @@ class Cast {
   }
 
   Future getPlayerStatus(itemId) async {
-    var message = await _channel.invokeMethod('getPlayerStatus', {'itemId': itemId});
+    var message =
+        await _channel.invokeMethod('getPlayerStatus', {'itemId': itemId});
     _setRoutes();
     return message;
   }
+
+  Map<String, RouteProps> getRoutes() {
+    var result = Map<String, RouteProps>();
+    result.addAll(_routes);
+    return result;
+  }
+
+  String get sessionId => _sessionId;
 
   Future _setRoutes() async {
     Map routes = await _channel.invokeMethod('getRoutes');
@@ -66,8 +82,14 @@ class Cast {
     return result;
   }
 
-  Future<String> play(String url, String mimeType, {Map<String, String> extra, int position: 0}) async {
-    var result = await _channel.invokeMethod('play', {'url': url, 'mimeType': mimeType, 'extra': extra, 'position': position});
+  Future<String> play(String url, String mimeType,
+      {Map<String, String> extra, int position: 0}) async {
+    var result = await _channel.invokeMethod('play', {
+      'url': url,
+      'mimeType': mimeType,
+      'extra': extra,
+      'position': position
+    });
     return result;
   }
 
@@ -100,21 +122,25 @@ class Cast {
         break;
       case 'castConnected':
         var mapped = call.arguments as Map;
-        var sessionId = mapped["sessionId"] as String;
-        connectedController.add(new ConnectedEvent(true, sessionId));
+        _sessionId = mapped["sessionId"] as String;
+        connectedController.add(new ConnectedEvent(true, _sessionId));
         break;
       case 'castDisconnected':
+        _sessionId = null;
         connectedController.add(new ConnectedEvent(false, null));
         break;
       case 'castMediaPlaying':
         var itemId = call.arguments as String;
-        mediaPlayingController.add(new MediaPlayingEvent(true, itemId, PlayingState.Playing));
+        mediaPlayingController
+            .add(new MediaPlayingEvent(true, itemId, PlayingState.Playing));
         break;
       case 'castMediaPaused':
-        mediaPlayingController.add(new MediaPlayingEvent(false, null, PlayingState.Paused));
+        mediaPlayingController
+            .add(new MediaPlayingEvent(false, null, PlayingState.Paused));
         break;
       case 'castMediaResumed':
-        mediaPlayingController.add(new MediaPlayingEvent(true, null, PlayingState.Resumed));
+        mediaPlayingController
+            .add(new MediaPlayingEvent(true, null, PlayingState.Resumed));
         break;
       case 'castItemChanged':
         var mapped = call.arguments as Map;
@@ -125,7 +151,8 @@ class Cast {
         var itemStatus = int.tryParse(mapped["itemStatus"]);
         var itemDuration = int.tryParse(mapped["itemDuration"]);
         var itemPosition = int.tryParse(mapped["itemPosition"]);
-        _itemStatusController.add(ItemStatusEvent(sessionId, sessionState, timeStamps, itemId, itemStatus, itemDuration, itemPosition));
+        _itemStatusController.add(ItemStatusEvent(sessionId, sessionState,
+            timeStamps, itemId, itemStatus, itemDuration, itemPosition));
         break;
       /*case 'castSessionChanged':
         var mapped = call.arguments as Map;
@@ -137,7 +164,8 @@ class Cast {
         var sessionId = mapped["sessionId"] as String;
         var mediaSessionState = int.tryParse(mapped["mediaSessionState"]);
         var mediaTimeStamps = mapped["mediaSessionTimeStamps"] as String;
-        _sessionStatusController.add(SessionStatusEvent(sessionId, mediaSessionState, mediaTimeStamps));
+        _sessionStatusController.add(
+            SessionStatusEvent(sessionId, mediaSessionState, mediaTimeStamps));
         break;
     }
   }
